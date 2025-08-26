@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>G Schools Admin Panel</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      margin-top: 50px;
+    }
+    textarea {
+      width: 80%;
+      height: 100px;
+      margin: 10px 0;
+      font-size: 16px;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    button {
+      padding: 12px 20px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: none;
+      background: #0078D7;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #005fa3;
+    }
+    .result {
+      margin-top: 20px;
+      text-align: left;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>📢 G Schools Admin Panel</h1>
+  <p>Send a notification to all subscribers.</p>
+
+  <textarea id="message" placeholder="Type your notification message..."></textarea><br>
+  <button onclick="sendNotification()">Send to All</button>
+
+  <div class="result" id="result"></div>
+
+  <script>
+    async function sendNotification() {
+      const message = document.getElementById("message").value || "🚨 G Schools";
+
+      try {
+        const res = await fetch("/send-all", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message })
+        });
+
+        const data = await res.json();
+        document.getElementById("result").innerText =
+          JSON.stringify(data, null, 2);
+      } catch (err) {
+        console.error("❌ Failed to send", err);
+        alert("Failed to send notification.");
+      }
+    }
+  </script>
+</body>
+</html>
