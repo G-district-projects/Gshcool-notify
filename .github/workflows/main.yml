@@ -39,6 +39,10 @@ jobs:
         mkdir -p build
         cp -r static build/
         cp -r Templates build/
+        # Ensure index.html exists at the root of build/
+        if [ -f Templates/index.html ]; then
+          cp Templates/index.html build/index.html
+        fi
         echo "Static site prepared with Templates + assets"
 
     - name: Upload Artifact
