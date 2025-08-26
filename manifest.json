@@ -1,0 +1,21 @@
+{
+  "name": "G Schools",
+  "short_name": "GSchools",
+  "start_url": "https://09ba4e841a3c.ngrok-free.app/",
+  "scope": "https://09ba4e841a3c.ngrok-free.app/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0078D7",
+  "icons": [
+    {
+      "src": "/static/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
