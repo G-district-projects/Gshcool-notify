@@ -38,8 +38,8 @@ jobs:
       run: |
         mkdir -p build
         cp -r static build/
-        cp -r templates build/
-        echo "Static site prepared with templates + assets"
+        cp -r Templates build/
+        echo "Static site prepared with Templates + assets"
 
     - name: Upload Artifact
       uses: actions/upload-pages-artifact@v3
