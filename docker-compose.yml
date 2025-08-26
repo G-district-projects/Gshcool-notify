@@ -1,0 +1,14 @@
+version: "3.9"
+
+services:
+  push_demo:
+    build: .
+    container_name: push_demo_app
+    command: python server.py
+    ports:
+      - "5000:5000"
+    volumes:
+      # Persist subscriptions outside container
+      - ./subscriptions.json:/app/subscriptions.json
+    environment:
+      - FLASK_ENV=production
