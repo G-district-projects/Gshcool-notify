@@ -1,0 +1,186 @@
+\<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Gschools Push Notify</title>
+
+  <!-- Manifest for PWA -->
+  <link rel="manifest" href="/static/manifest.json">
+
+  <!-- iOS web app support -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Gschools">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+
+  <!-- Favicon -->
+  <link rel="icon" href="/static/favicon.png">
+
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      margin-top: 30px;
+    }
+    button {
+      padding: 12px 20px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: none;
+      background: #0078D7;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #005fa3;
+    }
+    #feed {
+      margin: 30px auto;
+      max-width: 600px;
+      text-align: left;
+    }
+    .notif {
+      background: #f2f2f2;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 10px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .notif time {
+      font-size: 12px;
+      color: #666;
+      display: block;
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+  <h1>📢 G Schools Push Notifications</h1>
+  <p>If you allow notifications, a test push can be sent via <code>/admin</code>.</p>
+  <button onclick="subscribeUser()">Subscribe to Notifications</button>
+
+  <h2>📜 Notification Feed</h2>
+  <div id="feed"></div>
+
+  <script>
+    const vapidPublicKey = "{{ vapid_key }}";
+    const FEED_KEY = "notifFeed";
+    const RESET_KEY = "notifLastReset";
+    const RESET_INTERVAL = 7200000; // 2 hours
+
+    function urlBase64ToUint8Array(base64String) {
+      const padding = "=".repeat((4 - base64String.length % 4) % 4);
+      const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+      const rawData = atob(base64);
+      return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+    }
+
+    async function subscribeUser() {
+      if (!("serviceWorker" in navigator)) {
+        alert("❌ Service Worker not supported on this browser/device.");
+        return;
+      }
+
+      try {
+        const reg = await navigator.serviceWorker.register("/service-worker.js", { scope: "/" });
+        console.log("✅ Service Worker registered", reg);
+
+        // Try periodic background sync (not supported everywhere, esp. iOS)
+        if ("periodicSync" in reg) {
+          try {
+            await reg.periodicSync.register("feed-sync", { minInterval: 60 * 60 * 1000 }); // hourly
+            console.log("✅ Periodic background sync registered");
+          } catch (err) {
+            console.warn("⚠️ Periodic sync not allowed", err);
+          }
+        }
+
+        const subscription = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+        });
+        console.log("✅ Got subscription", subscription);
+
+        await fetch("/save-subscription", {
+          method: "POST",
+          body: JSON.stringify(subscription),
+          headers: { "Content-Type": "application/json" }
+        });
+
+        alert("✅ Subscribed to push notifications!");
+      } catch (err) {
+        console.error("❌ Subscription failed", err);
+        alert("Subscription failed. Check console for details.");
+      }
+    }
+
+    // ------------------------
+    // FEED MANAGEMENT
+    // ------------------------
+    function saveFeed(feed) {
+      localStorage.setItem(FEED_KEY, JSON.stringify(feed));
+    }
+
+    function loadFeed() {
+      return JSON.parse(localStorage.getItem(FEED_KEY) || "[]");
+    }
+
+    function renderFeed() {
+      const feed = document.getElementById("feed");
+      feed.innerHTML = "";
+      const items = loadFeed();
+      for (const notif of items) {
+        const div = document.createElement("div");
+        div.className = "notif";
+        div.innerHTML = `<strong>${notif.title}</strong><p>${notif.body}</p>
+                         <time>${new Date(notif.timestamp).toLocaleString()}</time>`;
+        feed.append(div);
+      }
+    }
+
+    function addToFeed(title, body) {
+      const items = loadFeed();
+      const newItem = { title, body, timestamp: Date.now() };
+      items.unshift(newItem);
+      saveFeed(items);
+      renderFeed();
+    }
+
+    function clearFeed() {
+      localStorage.removeItem(FEED_KEY);
+      renderFeed();
+    }
+
+    function maybeResetFeed() {
+      const lastReset = parseInt(localStorage.getItem(RESET_KEY) || "0", 10);
+      const now = Date.now();
+      if (now - lastReset >= RESET_INTERVAL) {
+        clearFeed();
+        localStorage.setItem(RESET_KEY, now.toString());
+        console.log("🧹 Notification feed auto-cleared after 2 hours");
+      }
+    }
+
+    // ------------------------
+    // INITIALIZE ON PAGE LOAD
+    // ------------------------
+    window.addEventListener("load", () => {
+      maybeResetFeed();
+      renderFeed();
+    });
+
+    // ------------------------
+    // LISTEN FOR SW MESSAGES
+    // ------------------------
+    navigator.serviceWorker.addEventListener("message", event => {
+      const data = event.data;
+      if (!data) return;
+      if (data.type === "PUSH_NOTIFICATION") {
+        addToFeed(data.title, data.body);
+      } else if (data.type === "CLEAR_FEED") {
+        clearFeed();
+      }
+    });
+  </script>
+</body>
+</html>
